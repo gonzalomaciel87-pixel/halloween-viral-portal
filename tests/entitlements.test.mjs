@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { normalizeEmail,emailKey,validatePurchase,entitlementFor } from '../netlify/lib/entitlements.mjs';
+test('normaliza y hashea correos de forma estable',()=>{assert.equal(normalizeEmail(' TEST@Email.COM '),'test@email.com');assert.equal(emailKey(' TEST@Email.COM '),emailKey('test@email.com'))});
+test('rechaza producto, precio, moneda o estado manipulados',()=>{const base={email:'a@b.com',product:'halloween-viral',price:0,currency:'ARS',status:'demo-approved'};assert.equal(validatePurchase(base),true);for(const change of [{product:'otro'},{price:1},{currency:'USD'},{status:'paid'}])assert.equal(validatePurchase({...base,...change}),false)});
+test('crea derecho activo sin confiar en datos sensibles del navegador',()=>{const value=entitlementFor({email:' A@B.COM ',name:'Ana'});assert.equal(value.email,'a@b.com');assert.equal(value.active,true);assert.equal(value.product,'halloween-viral')});

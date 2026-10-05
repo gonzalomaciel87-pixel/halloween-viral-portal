@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+test('los adaptadores legacy conservan los nombres y runtime moderno',async()=>{for(const file of ['identity-login.mts','identity-signup.mts']){const text=await (await import('node:fs/promises')).readFile(new URL(`../netlify/functions/${file}`,import.meta.url),'utf8');assert.match(text,/export default/);assert.doesNotMatch(text,/export const handler/)}});
