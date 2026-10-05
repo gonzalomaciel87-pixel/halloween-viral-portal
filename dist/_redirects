@@ -1,5 +1,3 @@
-/portal.html  /login.html  401!  Role=buyer
-/portal       /login.html  401!  Role=buyer
-/portal/      /login.html  401!  Role=buyer
-/recursos/*   /login.html  401!  Role=buyer
+/portal       /portal.html  200
+/portal/      /portal.html  200
 /*            /index.html  200
