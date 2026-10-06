@@ -31,14 +31,14 @@ export async function getSignedBookUrl(path) {
 }
 
 export async function downloadBook(path) {
-  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(path);
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(path, 60, { download: path });
   if (error) throw error;
-  const objectUrl = URL.createObjectURL(data);
   const link = document.createElement('a');
-  link.href = objectUrl;
+  link.href = data.signedUrl;
   link.download = path;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
