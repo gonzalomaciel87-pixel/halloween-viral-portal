@@ -4,6 +4,11 @@ const status = document.querySelector('#login-status');
 const button = document.querySelector('#google-login');
 
 async function restoreOAuthSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    if (location.hash) history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+    return;
+  }
   const params = new URLSearchParams(location.hash.slice(1));
   const accessToken = params.get('access_token');
   const refreshToken = params.get('refresh_token');
@@ -44,5 +49,8 @@ button?.addEventListener('click', async () => {
 });
 
 try { await restoreOAuthSession(); }
-catch { if (status) status.textContent = 'No pudimos completar el acceso con Google. Intentá nuevamente.'; }
+catch (error) {
+  console.error('OAuth session error', error);
+  if (status) status.textContent = 'No pudimos completar el acceso con Google. Intentá nuevamente.';
+}
 await routeIfAuthorized();
