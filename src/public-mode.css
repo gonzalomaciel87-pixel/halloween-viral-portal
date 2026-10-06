@@ -10,3 +10,30 @@
   opacity: .42;
   filter: grayscale(1);
 }
+
+.resource-cover {
+  height: 390px;
+  padding: 24px;
+  background: radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--glow) 32%, transparent), transparent 55%), #100b17;
+}
+
+.resource-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, .48));
+  transition: transform .3s ease;
+}
+
+.resource-card:hover .resource-cover img {
+  transform: translateY(-4px) scale(1.015);
+}
+
+@media (max-width: 850px) {
+  .resource-cover { height: 360px; }
+}
+
+@media (max-width: 560px) {
+  .resource-cover { height: 420px; padding: 20px; }
+}
