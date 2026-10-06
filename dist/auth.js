@@ -3,6 +3,19 @@ import { supabase, getBuyer } from './supabase-client.js';
 const status = document.querySelector('#login-status');
 const button = document.querySelector('#google-login');
 
+async function restoreOAuthSession() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken || !refreshToken) return;
+  const { error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken
+  });
+  if (error) throw error;
+  history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+}
+
 async function routeIfAuthorized() {
   try {
     const buyer = await getBuyer();
@@ -30,4 +43,6 @@ button?.addEventListener('click', async () => {
   }
 });
 
+try { await restoreOAuthSession(); }
+catch { if (status) status.textContent = 'No pudimos completar el acceso con Google. Intentá nuevamente.'; }
 await routeIfAuthorized();

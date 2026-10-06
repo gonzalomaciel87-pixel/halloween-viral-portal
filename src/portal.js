@@ -12,6 +12,8 @@ const books = [
 const grid = document.querySelector('#resources');
 const reader = document.querySelector('#reader');
 const availability = new Map();
+const libraryDescription = document.querySelector('#biblioteca .portal-section-head > p');
+if (libraryDescription) libraryDescription.textContent = 'Leé cada ebook online o descargalo para consultarlo cuando quieras.';
 
 async function detectResources() {
   await Promise.all(books.map(async (book) => {
