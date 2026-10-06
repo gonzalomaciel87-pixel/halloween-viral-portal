@@ -1,3 +1,3 @@
 export const SUPABASE_URL = 'https://vbfonuoapczaynclcljh.supabase.co';
-export const SUPABASE_ANON_KEY = 'sb_publishable_ltaNA7nnVozoSCOcZIjg';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZm9udW9hcGN6YXluY2xjbGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNDI3MTIsImV4cCI6MjEwNjgxODcxMn0.bfGSoPqyEzCFKGaN3jFeNOAexqpb536xmb0G_FtyUT4';
 export const STORAGE_BUCKET = 'ebooks';
