@@ -29,19 +29,30 @@ function renderBuyers(buyers) {
   if (!buyers.length) {
     const row = list.insertRow();
     const cell = row.insertCell();
-    cell.colSpan = 3;
+    cell.colSpan = 4;
     cell.textContent = 'Todavía no hay compradores.';
     return;
   }
   buyers.forEach((buyer) => {
     const row = list.insertRow();
     row.insertCell().textContent = buyer.email;
+    const source = [];
+    if (buyer.manual_access) source.push('Manual');
+    if (buyer.hotmart_access) source.push('Hotmart');
+    row.insertCell().textContent = source.join(' + ') || 'Sin acceso';
     const stateCell = row.insertCell();
     const badge = document.createElement('span');
     badge.className = `admin-state ${buyer.active ? 'active' : ''}`;
     badge.textContent = buyer.active ? 'Activo' : 'Inactivo';
     stateCell.appendChild(badge);
-    row.insertCell().textContent = new Date(buyer.created_at).toLocaleDateString('es-AR');
+    const actionCell = row.insertCell();
+    const action = document.createElement('button');
+    action.className = 'button button-ghost admin-access-action';
+    action.type = 'button';
+    action.dataset.email = buyer.email;
+    action.dataset.active = String(!buyer.manual_access);
+    action.textContent = buyer.manual_access ? 'Quitar manual' : 'Habilitar manual';
+    actionCell.appendChild(action);
   });
 }
 
@@ -49,7 +60,7 @@ async function loadBuyers() {
   try { renderBuyers(await api()); }
   catch (error) {
     if (error.message === 'not_authorized') document.querySelector('.admin-shell').innerHTML = '<section class="admin-intro"><p class="eyebrow">Acceso restringido</p><h1>Esta cuenta no administra el portal.</h1><p>Ingresá con el correo administrador de Halloween Viral.</p></section>';
-    else list.innerHTML = '<tr><td colspan="3">No pudimos cargar la lista.</td></tr>';
+    else list.innerHTML = '<tr><td colspan="4">No pudimos cargar la lista.</td></tr>';
   }
 }
 
@@ -69,5 +80,18 @@ form?.addEventListener('submit', async (event) => {
 });
 
 document.querySelector('#refresh')?.addEventListener('click', loadBuyers);
+list?.addEventListener('click', async (event) => {
+  const button = event.target.closest('.admin-access-action');
+  if (!button) return;
+  button.disabled = true;
+  const active = button.dataset.active === 'true';
+  status.textContent = active ? 'Habilitando acceso manual…' : 'Quitando acceso manual…';
+  try {
+    await api({ method: 'POST', body: JSON.stringify({ email: button.dataset.email, active, notes: active ? 'Acceso manual' : 'Acceso manual retirado' }) });
+    status.textContent = active ? 'Acceso manual habilitado.' : 'Acceso manual retirado; las compras válidas de Hotmart se conservan.';
+    await loadBuyers();
+  } catch { status.textContent = 'No se pudo actualizar el acceso manual.'; }
+  finally { button.disabled = false; }
+});
 document.querySelector('#logout')?.addEventListener('click', async () => { await supabase.auth.signOut(); location.replace('/login.html?next=%2Fadmin.html'); });
 loadBuyers();

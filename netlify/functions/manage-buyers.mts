@@ -23,8 +23,14 @@ export default async (request: Request) => {
   const headers = { apikey: serviceKey, authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' };
 
   if (request.method === 'GET') {
-    const response = await fetch(`${url}/rest/v1/buyer_access?select=email,active,lifetime_access,created_at,notes&order=created_at.desc`, { headers });
-    return json(response.ok ? await response.json() : { error: 'list_failed' }, response.status);
+    const [buyersResponse, purchasesResponse] = await Promise.all([
+      fetch(`${url}/rest/v1/buyer_access?select=email,active,manual_access,lifetime_access,created_at,notes&order=created_at.desc`, { headers }),
+      fetch(`${url}/rest/v1/hotmart_transactions?select=buyer_email,active&active=eq.true`, { headers })
+    ]);
+    if (!buyersResponse.ok || !purchasesResponse.ok) return json({ error: 'list_failed' }, 502);
+    const buyers = await buyersResponse.json();
+    const hotmartEmails = new Set((await purchasesResponse.json()).map((row: any) => row.buyer_email));
+    return json(buyers.map((buyer: any) => ({ ...buyer, hotmart_access: hotmartEmails.has(buyer.email) })));
   }
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   let body: { email?: string; active?: boolean; notes?: string };
@@ -36,8 +42,12 @@ export default async (request: Request) => {
   const response = await fetch(`${url}/rest/v1/buyer_access?on_conflict=email`, {
     method: 'POST',
     headers: { ...headers, prefer: 'resolution=merge-duplicates,return=representation' },
-    body: JSON.stringify({ email, active, lifetime_access: true, notes })
+    body: JSON.stringify({ email, active: false, manual_access: active, lifetime_access: true, notes })
   });
   if (!response.ok) return json({ error: 'save_failed' }, response.status);
-  return json({ ok: true, buyer: (await response.json())[0] });
+  const recompute = await fetch(`${url}/rest/v1/rpc/recompute_buyer_access`, {
+    method: 'POST', headers, body: JSON.stringify({ p_email: email })
+  });
+  if (!recompute.ok) return json({ error: 'recompute_failed' }, 502);
+  return json({ ok: true, buyer: await recompute.json() });
 };
