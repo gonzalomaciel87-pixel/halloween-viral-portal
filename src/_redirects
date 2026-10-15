@@ -1,3 +1,4 @@
 /portal       /portal.html  200
 /portal/      /portal.html  200
+/.netlify/functions/capi-smoke-6ad05a  /index.html  404
 /*            /index.html  200
