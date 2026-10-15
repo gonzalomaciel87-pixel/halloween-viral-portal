@@ -6,6 +6,10 @@
 [functions]
   node_bundler = "esbuild"
 
+[[edge_functions]]
+  function = "retired-endpoints"
+  path = "/.netlify/functions/capi-smoke-6ad05a"
+
 [[headers]]
   for = "/*"
   [headers.values]
