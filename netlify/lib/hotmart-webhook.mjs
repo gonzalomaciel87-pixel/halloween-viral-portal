@@ -30,6 +30,10 @@ export function normalizeHotmartEvent(payload) {
   const productId = Number.isSafeInteger(Number(product.id)) ? Number(product.id) : null;
   const productUcode = String(product.ucode || '').trim();
   const creationDate = Number(payload?.creation_date);
+  const fullPrice = purchase?.full_price || {};
+  const offerPrice = purchase?.price || {};
+  const checkoutCountry = purchase?.checkout_country || {};
+  const address = buyer?.address || {};
   return {
     eventId: String(payload?.id || '').trim(),
     version: String(payload?.version || '').trim(),
@@ -39,8 +43,23 @@ export function normalizeHotmartEvent(payload) {
     email,
     productId,
     productUcode,
+    productName: String(product.name || '').trim(),
     status,
-    active: GRANT_EVENTS.has(eventType) ? ['APPROVED', 'COMPLETE'].includes(status) : null
+    active: GRANT_EVENTS.has(eventType) ? ['APPROVED', 'COMPLETE'].includes(status) : null,
+    approvedDate: Number(purchase.approved_date) || null,
+    value: Number(fullPrice.value ?? offerPrice.value),
+    currency: String(fullPrice.currency_value || offerPrice.currency_value || '').trim().toUpperCase(),
+    sck: String(purchase?.origin?.sck || '').trim(),
+    buyer: {
+      email,
+      name: String(buyer.name || '').trim(),
+      firstName: String(buyer.first_name || '').trim(),
+      lastName: String(buyer.last_name || '').trim(),
+      phone: String(buyer.checkout_phone || '').trim(),
+      phoneAreaCode: String(buyer.checkout_phone_code || '').trim(),
+      city: String(address.city || '').trim(),
+      countryIso: String(address.country_iso || checkoutCountry.iso || '').trim().toUpperCase()
+    }
   };
 }
 
@@ -83,8 +102,12 @@ export function applyOrderedEvent(current, incoming) {
   return incoming;
 }
 
-export function createHotmartHandler({ getEnv, processEvent }) {
-  return async function handle(request) {
+export function isApprovedPurchase(event) {
+  return event.eventType === 'PURCHASE_APPROVED' && event.status === 'APPROVED';
+}
+
+export function createHotmartHandler({ getEnv, processEvent, sendPurchase }) {
+  return async function handle(request, context = {}) {
     if (request.method !== 'POST') return Response.json({ error: 'method_not_allowed' }, { status: 405 });
     if (!secureEqual(request.headers.get('x-hotmart-hottok'), getEnv('HOTMART_HOTTOK'))) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });
@@ -104,6 +127,11 @@ export function createHotmartHandler({ getEnv, processEvent }) {
     }
 
     const result = await processEvent({ ...event, active: eventAccessState(event) });
+    if (isApprovedPurchase(event) && typeof sendPurchase === 'function') {
+      const purchaseTask = Promise.resolve(sendPurchase(event)).catch(() => undefined);
+      if (typeof context.waitUntil === 'function') context.waitUntil(purchaseTask);
+      else await purchaseTask;
+    }
     return Response.json({ ok: true, outcome: result?.outcome || 'processed' });
   };
 }

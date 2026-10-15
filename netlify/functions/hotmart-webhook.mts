@@ -1,4 +1,5 @@
 import { createHotmartHandler } from '../lib/hotmart-webhook.mjs';
+import { sendMetaPurchase } from '../lib/meta-capi.mjs';
 
 const getEnv = (name: string) => Netlify.env.get(name) || '';
 
@@ -30,4 +31,8 @@ async function processEvent(event: any) {
   return response.json();
 }
 
-export default createHotmartHandler({ getEnv, processEvent });
+export default createHotmartHandler({
+  getEnv,
+  processEvent,
+  sendPurchase: (event: any) => sendMetaPurchase(event, { getEnv })
+});

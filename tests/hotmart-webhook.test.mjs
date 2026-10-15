@@ -151,3 +151,47 @@ test('rechaza Hottok incorrecto y no procesa otro producto', async () => {
   assert.equal((await otherProduct.json()).outcome, 'ignored_product');
   assert.equal(system.transactions.size, 0);
 });
+
+test('programa CAPI solo para una compra aprobada y no bloquea la respuesta', async () => {
+  const scheduled = [];
+  const sent = [];
+  const getEnv = (name) => ({
+    HOTMART_HOTTOK: HOTTOK,
+    HOTMART_PRODUCT_ID: PRODUCT_ID,
+    HOTMART_PRODUCT_UCODE: ''
+  })[name] || '';
+  const handler = createHotmartHandler({
+    getEnv,
+    processEvent: async () => ({ outcome: 'processed' }),
+    sendPurchase: async (event) => { sent.push(event.transaction); }
+  });
+  const request = (body) => new Request('https://example.test/webhook', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-hotmart-hottok': HOTTOK },
+    body: JSON.stringify(body)
+  });
+  const context = { waitUntil(task) { scheduled.push(task); } };
+
+  const approvedResponse = await handler(request(payload({ id: 'capi-approved' })), context);
+  await handler(request(payload({ id: 'capi-pending', event: 'PURCHASE_AWAITING_PAYMENT', status: 'WAITING_PAYMENT' })), context);
+
+  assert.equal(approvedResponse.status, 200);
+  assert.equal(scheduled.length, 1);
+  await Promise.all(scheduled);
+  assert.deepEqual(sent, ['HP0001']);
+});
+
+test('un fallo de CAPI no cambia el 200 del webhook', async () => {
+  const handler = createHotmartHandler({
+    getEnv: (name) => ({ HOTMART_HOTTOK: HOTTOK, HOTMART_PRODUCT_ID: PRODUCT_ID })[name] || '',
+    processEvent: async () => ({ outcome: 'processed' }),
+    sendPurchase: async () => { throw new Error('network_error'); }
+  });
+  const response = await handler(new Request('https://example.test/webhook', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-hotmart-hottok': HOTTOK },
+    body: JSON.stringify(payload({ id: 'capi-failure' }))
+  }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).outcome, 'processed');
+});
