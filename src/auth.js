@@ -1,7 +1,45 @@
 import { supabase, getBuyer } from './supabase-client.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js';
 
 const status = document.querySelector('#login-status');
 const button = document.querySelector('#google-login');
+const codeForm = document.querySelector('#code-form');
+
+// Ingreso con código (para correos que no son Gmail): el código lo envía el vendedor por WhatsApp.
+codeForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const email = document.querySelector('#access-email').value.trim().toLowerCase();
+  const code = document.querySelector('#access-code').value.replace(/\D/g, '');
+  const submit = document.querySelector('#code-login');
+  if (!email.includes('@') || code.length !== 6) {
+    status.textContent = 'Escribí el correo de tu compra y el código de 6 números.';
+    return;
+  }
+  submit.disabled = true;
+  status.textContent = 'Verificando tu código…';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/code-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ email, code })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.token_hash) {
+      status.textContent = res.status === 403
+        ? 'Ese correo todavía no tiene el acceso habilitado. Escribinos por WhatsApp.'
+        : 'El correo o el código no coinciden. Revisalos o pedinos uno nuevo por WhatsApp.';
+      submit.disabled = false;
+      return;
+    }
+    const { error } = await supabase.auth.verifyOtp({ token_hash: body.token_hash, type: 'magiclink' });
+    if (error) throw error;
+    await routeIfAuthorized();
+  } catch (error) {
+    console.error('Code login error', error);
+    status.textContent = 'No pudimos completar el ingreso. Intentá nuevamente.';
+    submit.disabled = false;
+  }
+});
 
 async function restoreOAuthSession() {
   const { data: { session } } = await supabase.auth.getSession();
